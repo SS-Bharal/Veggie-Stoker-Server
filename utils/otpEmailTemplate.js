@@ -1,4 +1,4 @@
-const forgotPasswordTemplate = ({ name, otp })=>{
+const otpEmailTemplate = ({ name, otp })=>{
     return `
 <div>
     <p>Dear, ${name}</p>
@@ -15,4 +15,4 @@ const forgotPasswordTemplate = ({ name, otp })=>{
     `
 }
 
-export default forgotPasswordTemplate
+export default otpEmailTemplate

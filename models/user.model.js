@@ -69,7 +69,9 @@ const userSchema = new mongoose.Schema({
         type : String,
         enum : ['ADMIN',"USER"],
         default : "USER"
-    }
+    },
+    email_otp: { type: String },
+    email_otp_expiry: { type: Date }
 },{
     timestamps : true
 })

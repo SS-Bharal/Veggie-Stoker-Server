@@ -6,66 +6,60 @@ import generatedAccessToken from '../utils/generatedAccessToken.js'
 import genertedRefreshToken from '../utils/generatedRefreshToken.js'
 import uploadImageClodinary from '../utils/uploadImageClodinary.js'
 import generatedOtp from '../utils/generatedOtp.js'
-import forgotPasswordTemplate from '../utils/forgotPasswordTemplate.js'
 import jwt from 'jsonwebtoken'
+import otpEmailTemplate from '../utils/otpEmailTemplate.js'
 
-export async function registerUserController(request,response){
+export async function registerUserController(request, response) {
     try {
-        const { name, email , password } = request.body
-        
-        if(!name || !email || !password){
+        const { name, email, password } = request.body
+        if (!name || !email || !password) {
             return response.status(400).json({
-                message : "provide email, name, password",
-                error : true,
-                success : false
+                message: "provide email, name, password",
+                error: true,
+                success: false
             })
         }
-
         const user = await UserModel.findOne({ email })
-
-        if(user){
+        if (user) {
             return response.json({
-                message : "Already register email",
-                error : true,
-                success : false
+                message: "Already register email",
+                error: true,
+                success: false
             })
         }
-
         const salt = await bcryptjs.genSalt(10)
-        const hashPassword = await bcryptjs.hash(password,salt)
+        const hashPassword = await bcryptjs.hash(password, salt)
+        const otp = generatedOtp()
+        const otpExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
 
         const payload = {
             name,
             email,
-            password : hashPassword
+            password: hashPassword,
+            verify_email: false,
+            email_otp: otp,
+            email_otp_expiry: otpExpiry
         }
-
         const newUser = new UserModel(payload)
         const save = await newUser.save()
 
-        const VerifyEmailUrl = `${process.env.FRONTEND_URL}/verify-email?code=${save?._id}`
-
-        const verifyEmail = await sendEmail({
-            sendTo : email,
-            subject : "Verify email from binkeyit",
-            html : verifyEmailTemplate({
-                name,
-                url : VerifyEmailUrl
-            })
+        await sendEmail({
+            sendTo: email,
+            subject: "Verify your email - Veggie Stoker",
+            html: otpEmailTemplate({ name, otp })
         })
 
         return response.json({
-            message : "User register successfully",
-            error : false,
-            success : true,
-            data : save
+            message: "User registered successfully. Please check your email for the OTP.",
+            error: false,
+            success: true,
+            data: save
         })
-
     } catch (error) {
         return response.status(500).json({
-            message : error.message || error,
-            error : true,
-            success : false
+            message: error.message || error,
+            error: true,
+            success: false
         })
     }
 }
@@ -107,7 +101,6 @@ export async function loginController(request,response){
     try {
         const { email , password } = request.body
 
-
         if(!email || !password){
             return response.status(400).json({
                 message : "provide email, password",
@@ -141,6 +134,29 @@ export async function loginController(request,response){
                 message : "Check your password",
                 error : true,
                 success : false
+            })
+        }
+
+        // If email is not verified, generate new OTP and send email
+        if (!user.verify_email) {
+            const otp = generatedOtp()
+            const otpExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
+
+            user.email_otp = otp
+            user.email_otp_expiry = otpExpiry
+            await user.save()
+
+            await sendEmail({
+                sendTo: user.email,
+                subject: "Verify your email - Veggie Stoker",
+                html: otpEmailTemplate({ name: user.name, otp })
+            })
+
+            return response.json({
+                message: "Please verify your email first. A new OTP has been sent to your email.",
+                error: false,
+                success: true,
+                needEmailVerification: true
             })
         }
 
@@ -304,7 +320,7 @@ export async function forgotPasswordController(request,response) {
         await sendEmail({
             sendTo : email,
             subject : "Forgot password from Veggie Stoker",
-            html : forgotPasswordTemplate({
+            html : otpEmailTemplate({
                 name : user.name,
                 otp : otp
             })
@@ -515,6 +531,64 @@ export async function userDetails(request,response){
             message : "Something is wrong",
             error : true,
             success : false
+        })
+    }
+}
+
+//verify email otp
+export async function verifyEmailOtpController(request, response) {
+    try {
+        const { email, otp } = request.body
+        if (!email || !otp) {
+            return response.status(400).json({
+                message: "Provide email and otp.",
+                error: true,
+                success: false
+            })
+        }
+        const user = await UserModel.findOne({ email })
+        if (!user) {
+            return response.status(400).json({
+                message: "User not found.",
+                error: true,
+                success: false
+            })
+        }
+        if (user.verify_email) {
+            return response.json({
+                message: "Email already verified.",
+                error: false,
+                success: true
+            })
+        }
+        if (user.email_otp !== otp) {
+            return response.status(400).json({
+                message: "Invalid OTP.",
+                error: true,
+                success: false
+            })
+        }
+        if (new Date() > new Date(user.email_otp_expiry)) {
+            return response.status(400).json({
+                message: "OTP expired.",
+                error: true,
+                success: false
+            })
+        }
+        user.verify_email = true
+        user.email_otp = ""
+        user.email_otp_expiry = null
+        await user.save()
+        return response.json({
+            message: "Email verified successfully.",
+            error: false,
+            success: true
+        })
+    } catch (error) {
+        return response.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false
         })
     }
 }
