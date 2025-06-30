@@ -1,5 +1,6 @@
 import CartProductModel from "../models/cartproduct.model.js";
 import UserModel from "../models/user.model.js";
+import ProductModel from "../models/product.model.js";
 
 export const addToCartItemController = async(request,response)=>{
     try {
@@ -9,6 +10,24 @@ export const addToCartItemController = async(request,response)=>{
         if(!productId){
             return response.status(402).json({
                 message : "Provide productId",
+                error : true,
+                success : false
+            })
+        }
+
+        // Check if product exists and has stock
+        const product = await ProductModel.findById(productId)
+        if (!product) {
+            return response.status(404).json({
+                message : "Product not found",
+                error : true,
+                success : false
+            })
+        }
+
+        if (product.stock <= 0) {
+            return response.status(400).json({
+                message : "Product is out of stock",
                 error : true,
                 success : false
             })
@@ -86,6 +105,29 @@ export const updateCartItemQtyController = async(request,response)=>{
         if(!_id ||  !qty){
             return response.status(400).json({
                 message : "provide _id, qty"
+            })
+        }
+
+        // Get cart item with product details
+        const cartItem = await CartProductModel.findOne({
+            _id : _id,
+            userId : userId
+        }).populate('productId')
+
+        if (!cartItem) {
+            return response.status(404).json({
+                message : "Cart item not found",
+                error : true,
+                success : false
+            })
+        }
+
+        // Check if requested quantity exceeds available stock
+        if (qty > cartItem.productId.stock) {
+            return response.status(400).json({
+                message : `Only ${cartItem.productId.stock} items available in stock`,
+                error : true,
+                success : false
             })
         }
 
