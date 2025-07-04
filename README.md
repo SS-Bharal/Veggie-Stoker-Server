@@ -4,7 +4,7 @@
 
 ## 🎥 Project Demo Video
 
-[Watch Demo Video on Google Drive](https://drive.google.com/file/d/1JuszsMpsbXHNv7g-eCjMTrJFpTrt5623/view?usp=sharing)
+[![Watch the demo](demo-thumbnail.png)](https://drive.google.com/file/d/1JuszsMpsbXHNv7g-eCjMTrJFpTrt5623/view?usp=sharing)
 
 
 ⚠️ Note: This repository contains a prototype version of the application. For access to the latest production-ready version or for collaboration opportunities, please feel free to connect with me directly at +91-7056099684 or mail at : sahilbharal0001@gmail.com
